@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>SHA‑256 · minimal</title>
+  <!-- Fuente sistema & estilo Apple -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: #f5f5f7;        /* fondo gris claro tipo Apple */
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 1.5rem;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .card {
+      background: rgba(255, 255, 255, 0.96);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      border-radius: 28px;
+      box-shadow: 
+        0 20px 40px rgba(0, 0, 0, 0.04),
+        0 6px 12px rgba(0, 0, 0, 0.03),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.8);
+      padding: 2.2rem 2rem 2.4rem;
+      width: 100%;
+      max-width: 480px;
+      transition: box-shadow 0.2s ease;
+    }
+
+    .card:hover {
+      box-shadow: 
+        0 24px 48px rgba(0, 0, 0, 0.06),
+        0 8px 16px rgba(0, 0, 0, 0.04),
+        inset 0 0 0 1px rgba(255, 255, 255, 0.9);
+    }
+
+    h1 {
+      font-size: 2rem;
+      font-weight: 590;           /* semibold apple style */
+      letter-spacing: -0.02em;
+      color: #1d1d1f;
+      margin-bottom: 2rem;
+      text-align: center;
+    }
+
+    .field {
+      margin-bottom: 2rem;
+    }
+
+    label {
+      display: block;
+      font-size: 0.9rem;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+      color: #86868b;
+      margin-bottom: 0.5rem;
+    }
+
+    /* input tipo password — estilo apple */
+    .input-wrapper {
+      position: relative;
+    }
+
+    input {
+      width: 100%;
+      padding: 0.9rem 1rem;
+      font-size: 1.1rem;
+      font-family: inherit;
+      background: #ffffff;
+      border: 1.5px solid #e8e8ed;
+      border-radius: 16px;
+      outline: none;
+      transition: border 0.15s ease, box-shadow 0.15s ease;
+      color: #1d1d1f;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+
+    input:focus {
+      border-color: #007aff;
+      box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.12);
+    }
+
+    input::placeholder {
+      color: #aeaeb2;
+      font-weight: 400;
+      opacity: 0.7;
+    }
+
+    /* grupo resultado: input + botones integrados */
+    .result-group {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .result-group .input-wrapper {
+      flex: 1;
+    }
+
+    .result-group input {
+      padding-right: 0.5rem;      /* espacio para que no choque con botones */
+    }
+
+    /* botones de acción — estilo Apple */
+    .action-btn {
+      background: #f6f6f8;
+      border: none;
+      border-radius: 30px;
+      width: 44px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #1d1d1f;
+      font-size: 1.25rem;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      backdrop-filter: blur(5px);
+      -webkit-backdrop-filter: blur(5px);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.02), inset 0 0 0 0.5px rgba(0,0,0,0.02);
+      flex-shrink: 0;
+    }
+
+    .action-btn i {
+      font-size: 1.2rem;
+      color: #424245;
+      transition: color 0.1s;
+    }
+
+    .action-btn:hover {
+      background: #ffffff;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05), inset 0 0 0 0.5px rgba(0,0,0,0.05);
+    }
+
+    .action-btn:hover i {
+      color: #007aff;
+    }
+
+    .action-btn:active {
+      transform: scale(0.96);
+      background: #e9e9ed;
+    }
+
+    /* botón copiar: feedback visual sutil */
+    .action-btn.copied i {
+      color: #28cd41;
+    }
+
+    /* grupo de botones pegado al input (opcional) */
+    .inline-actions {
+      display: flex;
+      gap: 0.25rem;
+    }
+
+    /* espaciado refinado */
+    .hash-header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      margin-bottom: 0.5rem;
+    }
+
+    .hash-header label {
+      margin-bottom: 0;
+    }
+
+    /* pequeño indicador visual de copiado */
+    .copy-feedback {
+      font-size: 0.75rem;
+      color: #28cd41;
+      opacity: 0;
+      transition: opacity 0.15s;
+      margin-left: 0.75rem;
+      font-weight: 500;
+    }
+
+    .copy-feedback.show {
+      opacity: 1;
+    }
+
+    /* diseño limpio */
+    .footnote {
+      margin-top: 1.5rem;
+      text-align: right;
+      font-size: 0.75rem;
+      color: #8e8e93;
+      letter-spacing: -0.01em;
+    }
+
+    /* ajustes responsive */
+    @media (max-width: 480px) {
+      .card {
+        padding: 1.8rem 1.5rem;
+      }
+      h1 {
+        font-size: 1.8rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>SHA‑256</h1>
+    
+    <!-- Campo de entrada (oculto, tipo password) -->
+    <div class="field">
+      <label for="secretInput">Contraseña</label>
+      <div class="input-wrapper">
+        <input type="password" id="secretInput" placeholder="Escribe algo…" autocomplete="off" spellcheck="false">
+      </div>
+    </div>
+
+    <!-- Sección del hash (resultado) -->
+    <div class="field">
+      <div class="hash-header">
+        <label for="hashOutput">Hash SHA‑256</label>
+        <span class="copy-feedback" id="copyFeedback">¡Copiado!</span>
+      </div>
+      
+      <div class="result-group">
+        <div class="input-wrapper">
+          <input type="password" id="hashOutput" readonly placeholder=" " value="">
+        </div>
+        <div class="inline-actions">
+          <!-- Botón mostrar/ocultar hash -->
+          <button class="action-btn" id="toggleVisibilityBtn" title="Mostrar / ocultar hash" aria-label="Mostrar u ocultar hash">
+            <i class="far fa-eye" id="eyeIcon"></i>
+          </button>
+          <!-- Botón copiar hash -->
+          <button class="action-btn" id="copyHashBtn" title="Copiar al portapapeles" aria-label="Copiar hash SHA‑256">
+            <i class="far fa-copy"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+    
+    <div class="footnote">
+      <span>• en tiempo real •</span>
+    </div>
+  </div>
+
+  <script>
+    (function(){
+      "use strict";
+
+      // Elementos del DOM
+      const secretInput = document.getElementById('secretInput');
+      const hashOutput = document.getElementById('hashOutput');
+      const toggleBtn = document.getElementById('toggleVisibilityBtn');
+      const eyeIcon = document.getElementById('eyeIcon');
+      const copyBtn = document.getElementById('copyHashBtn');
+      const copyFeedback = document.getElementById('copyFeedback');
+
+      // Estado de visibilidad del hash
+      let hashVisible = false;      // false = tipo 'password', true = tipo 'text'
+
+      // --------------------------------------------------------------
+      // Función para calcular SHA-256 usando Web Crypto API
+      // --------------------------------------------------------------
+      async function computeSHA256(message) {
+        try {
+          const encoder = new TextEncoder();
+          const data = encoder.encode(message);
+          const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+          const hashArray = Array.from(new Uint8Array(hashBuffer));
+          const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+          return hashHex;
+        } catch (error) {
+          console.error('Error al calcular SHA-256:', error);
+          return '';
+        }
+      }
+
+      // Actualizar el hash en el campo de salida
+      async function updateHash() {
+        const inputValue = secretInput.value;
+        if (inputValue === '') {
+          hashOutput.value = '';
+          // Si está vacío, podríamos poner un placeholder sutil, pero ya tiene placeholder=" "
+          return;
+        }
+        
+        const hash = await computeSHA256(inputValue);
+        hashOutput.value = hash;
+      }
+
+      // Escuchar cambios en el input (cada tecla)
+      secretInput.addEventListener('input', updateHash);
+
+      // También al cargar la página (por si hay valor guardado por el navegador)
+      window.addEventListener('DOMContentLoaded', () => {
+        if (secretInput.value) {
+          updateHash();
+        } else {
+          hashOutput.value = '';
+        }
+      });
+
+      // --------------------------------------------------------------
+      // Botón para alternar visibilidad del HASH (no del input original)
+      // --------------------------------------------------------------
+      function toggleHashVisibility() {
+        if (hashVisible) {
+          // Actualmente se ve → ocultar (password)
+          hashOutput.type = 'password';
+          eyeIcon.className = 'far fa-eye';       // ojo tachado? fa-eye-slash cuando oculto? 
+          // Apple style: cuando está oculto mostramos 'fa-eye' (indica "mostrar")
+          // cuando está visible mostramos 'fa-eye-slash' (indica "ocultar")
+          // Corregimos lógica: 
+          // Si hashVisible = true → estamos viendo texto → al cambiar ponemos password y icono fa-eye
+        } else {
+          // Oculto → mostrar texto
+          hashOutput.type = 'text';
+          eyeIcon.className = 'far fa-eye-slash';
+        }
+        hashVisible = !hashVisible;
+      }
+
+      // Ajuste fino del icono: al inicio hashVisible = false, tipo password → icono 'fa-eye' (mostrar)
+      // Al hacer click y mostrar texto: tipo text → icono 'fa-eye-slash'
+      toggleBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        toggleHashVisibility();
+      });
+
+      // Sincronizar si alguien cambia el tipo de otra forma (no debería)
+      
+      // --------------------------------------------------------------
+      // Botón copiar hash al portapapeles (copia el valor real, no enmascarado)
+      // --------------------------------------------------------------
+      async function copyHashToClipboard() {
+        const hashValue = hashOutput.value;
+        if (!hashValue) {
+          // Si está vacío, igual copiamos cadena vacía, pero damos feedback
+          try {
+            await navigator.clipboard.writeText('');
+            showCopyFeedback();
+          } catch (err) {
+            // fallback silencioso
+          }
+          return;
+        }
+        
+        try {
+          await navigator.clipboard.writeText(hashValue);
+          showCopyFeedback();
+        } catch (err) {
+          // Fallback para navegadores antiguos o contexto no seguro
+          const textArea = document.createElement('textarea');
+          textArea.value = hashValue;
+          textArea.style.position = 'fixed';
+          textArea.style.opacity = '0';
+          document.body.appendChild(textArea);
+          textArea.select();
+          try {
+            document.execCommand('copy');
+            showCopyFeedback();
+          } catch (e) {
+            alert('No se pudo copiar. Selecciona el hash manualmente.');
+          }
+          document.body.removeChild(textArea);
+        }
+      }
+
+      // Mostrar mensaje "Copiado" temporal
+      let feedbackTimer = null;
+      function showCopyFeedback() {
+        if (feedbackTimer) clearTimeout(feedbackTimer);
+        copyFeedback.classList.add('show');
+        copyBtn.classList.add('copied');
+        
+        feedbackTimer = setTimeout(() => {
+          copyFeedback.classList.remove('show');
+          copyBtn.classList.remove('copied');
+          feedbackTimer = null;
+        }, 1500);
+      }
+
+      copyBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        copyHashToClipboard();
+      });
+
+      // --------------------------------------------------------------
+      // Detalle extra: si el usuario pega o cambia el input con autocompletado, actualizar.
+      // Ya lo cubre el evento input.
+      
+      // Opcional: permitir ver el input original? No es necesario según especificación,
+      // pero podríamos agregar un botón extra. No lo pide explícitamente, así que mantenemos minimal.
+      
+      // Si se quiere que el placeholder del hash no se vea vacío, podemos mostrar algo
+      // cuando no hay hash. Lo dejamos con espacio en blanco controlado.
+      
+      // Pequeño ajuste: si el input queda vacío, aseguramos hashOutput vacío.
+      // (ya lo hace updateHash)
+      
+      // Inicializar correctamente el icono del ojo según estado por defecto.
+      // Al cargar: hashVisible = false, tipo password -> icono fa-eye
+      eyeIcon.className = 'far fa-eye';
+      
+      // Si de alguna forma el hash se modifica externamente, no hay problema.
+      
+      // Mejora: si el campo hash está vacío y se intenta copiar, se copia vacío.
+      // Todo bien.
+      
+      // (Opcional) Sincronizar si se togglea desde teclado o lector de pantalla, pero no necesario.
+    })();
+  </script>
+</body>
+</html>
